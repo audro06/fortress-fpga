@@ -1,0 +1,28 @@
+# Vivado / ISE 생성물
+*.jou
+*.log
+*.str
+*.backup.*
+.Xil/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.runs/
+*.gen/
+*.srcs/sim_1/
+xsim.dir/
+*.wdb
+*.pb
+*.bit
+*.bin
+*.xise
+*.ise
+*.ngc
+*.ncd
+webtalk*
+# OS / 에디터
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
