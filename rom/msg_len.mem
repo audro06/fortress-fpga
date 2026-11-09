@@ -1,0 +1,45 @@
+// message length ROM: 1 byte per message
+07  // P1 TURN
+07  // P2 TURN
+08  // CPU TURN
+07  // P1 MOVE
+07  // P2 MOVE
+08  // CPU MOVE
+04  // MOVE
+05  // DODGE
+06  // FROZEN
+05  // 5:END
+07  // DIRECT!
+04  // HIT!
+04  // MISS
+04  // OUT!
+05  // OOPS!
+07  // BLOCKED
+09  // WALL DOWN
+07  // FROZEN!
+06  // BRRR..
+05  // BURN!
+08  // BACKFIRE
+06  // EVENT!
+05  // LAVA!
+06  // LOW-G!
+05  // GUST!
+06  // QUAKE!
+04  // FOG!
+07  // METEOR!
+08  // FIRE 1ST
+04  // NORM
+02  // X2
+04  // WIDE
+03  // ICE
+04  // FIRE
+08  // FORTRESS
+08  // P1 WINS!
+08  // P2 WINS!
+09  // CPU WINS!
+0A  // DRAW GAME!
+07  // NO MOVE
+09  // NORM ONLY
+10  //  PUSH 5 TO START
+06  // SHELLS
+10  //  PUSH 5 : AGAIN 
