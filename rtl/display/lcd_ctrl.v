@@ -2,10 +2,11 @@
 //   전원 대기 50 ms -> 0x38 x3 (8비트, 2줄) -> 0x0C (표시 ON) -> 0x01 (지우기) -> 0x06 (오른쪽으로 진행)
 //   반복: CGRAM 8칸 x 8행 (0x40 + 64바이트) -> 윗줄 (0x80 + 16바이트) -> 아랫줄 (0xC0 + 16바이트)
 //         -> 흔들림(표시 이동 0x18/0x1C)과 깜빡임(표시 ON/OFF 0x0C/0x08) 맞추기
-//   한 바퀴 98바이트 x 약 52 us = 약 5 ms (게임 프레임 33 ms 안에 충분)
+//   한 바퀴 98바이트 x 약 103 us = 약 10 ms (게임 프레임 33 ms 안에 충분)
 //   쓸 내용은 lcd_renderer 에 주소를 주고 바로 받아와요 (조합회로).
 module lcd_ctrl #(
-    parameter integer CLK_HZ = 1_000_000
+    parameter integer CLK_HZ  = 1_000_000,
+    parameter integer EXEC_US = 100          // 글자 하나 쓰고 기다리는 시간 (LCD가 글자를 빠뜨리면 늘리세요)
 ) (
     input  wire       clk,
     input  wire       rst,
@@ -38,7 +39,7 @@ module lcd_ctrl #(
     reg  [7:0]  d_data;
     wire        d_busy, d_done;
 
-    lcd_driver #(.CLK_HZ(CLK_HZ)) u_drv (
+    lcd_driver #(.CLK_HZ(CLK_HZ), .EXEC_US(EXEC_US)) u_drv (
         .clk(clk), .rst(rst), .start(d_start), .rs(d_rs), .data(d_data), .long(d_long),
         .busy(d_busy), .done(d_done),
         .lcd_e(lcd_e), .lcd_rs(lcd_rs), .lcd_rw(lcd_rw), .lcd_data(lcd_data)

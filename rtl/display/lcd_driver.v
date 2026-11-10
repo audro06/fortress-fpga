@@ -1,9 +1,10 @@
 // Text LCD (HD44780 호환, 8비트 버스) 한 바이트 쓰기
 //   start 펄스 -> RS·데이터를 올리고 -> E를 잠깐 1 -> E를 0 -> 명령 실행 시간만큼 기다림 -> done 펄스
 //   RW는 항상 0 (쓰기만 함, busy flag 안 읽음 = 시간으로 기다림)
-//   long = 1 이면 Clear/Return home 처럼 오래 걸리는 명령 (2 ms 대기)
+//   long = 1 이면 Clear·초기화 명령처럼 오래 걸리는 명령 (5 ms 대기)
 module lcd_driver #(
-    parameter integer CLK_HZ = 1_000_000
+    parameter integer CLK_HZ  = 1_000_000,
+    parameter integer EXEC_US = 100          // 보통 명령 실행 대기 (HD44780 은 37 us, 여유 있게)
 ) (
     input  wire       clk,
     input  wire       rst,
@@ -21,7 +22,7 @@ module lcd_driver #(
     localparam integer US     = (CLK_HZ / 1_000_000 < 1) ? 1 : CLK_HZ / 1_000_000;
     localparam integer T_SET  = 1 * US;      // 주소 셋업 (>= 40 ns)
     localparam integer T_E    = 1 * US;      // E 펄스 폭 (>= 230 ns)
-    localparam integer T_EXEC = 50 * US;     // 보통 명령 실행 (37 us)
+    localparam integer T_EXEC = EXEC_US * US;
     localparam integer T_LONG = 5000 * US;   // Clear / 초기화 명령 (1.52 ms, 첫 Function set은 4.1 ms)
 
     localparam [1:0] S_IDLE = 2'd0, S_SET = 2'd1, S_EHI = 2'd2, S_WAIT = 2'd3;

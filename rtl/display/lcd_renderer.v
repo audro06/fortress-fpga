@@ -5,7 +5,7 @@
 //   를 바로 계산해서 돌려줘요. 화면 내용을 따로 저장하지 않아요 (게임 상태가 곧 화면).
 //
 //   게임 화면 쌓는 순서 (뒤가 위):
-//     lcd_field(탱크·벽·용암·!·?·.) -> HUD 글자(빈칸에만) -> 피해 숫자 -> 폭발(슬롯7)+'*'
+//     lcd_field(탱크·벽·용암·!·?·.) -> HUD 글자(빈칸에만) -> 피해 숫자(문구와 안 겹치는 칸) -> 폭발(슬롯7)+'*'
 //     -> 포탄 궤적(빈칸에만 가운뎃점) -> 포탄(슬롯7, 화면 위면 '^', 슬롯7을 폭발이 쓰는 중이면 'o')
 module lcd_renderer (
     input  wire [3:0]  st,
@@ -121,6 +121,8 @@ module lcd_renderer (
 
     wire hA, hB, hC;
     wire [7:0] chA, chB, chC;
+    wire hud_hit  = hA || hB || hC;
+    wire num_wins = (st == ST_METEOR);
     hud_span u_sA (.span(spA), .c(c), .aim_ang(cur_ang), .aim_pow(cur_pow), .wind(wind), .hit(hA), .ch(chA));
     hud_span u_sB (.span(spB), .c(c), .aim_ang(cur_ang), .aim_pow(cur_pow), .wind(wind), .hit(hB), .ch(chB));
     hud_span u_sC (.span(spC), .c(c), .aim_ang(cur_ang), .aim_pow(cur_pow), .wind(wind), .hit(hC), .ch(chC));
@@ -171,7 +173,7 @@ module lcd_renderer (
                         3'd4: fw_ch = CH_PLUS;
                         default: fw_ch = CH_DOT;
                     endcase
-                end else if (fa >= 5'd8 && fa < 5'd16 && (c == fc + 4'd1 || c + 4'd1 == fc) && !fw_hit) begin
+                end else if (fa >= 5'd8 && fa < 5'd16 && ({1'b0, c} == fc + 5'd1 || c + 5'd1 == {1'b0, fc}) && !fw_hit) begin
                     fw_hit = 1'b1; fw_ch = CH_DOT;
                 end
             end
@@ -208,16 +210,17 @@ module lcd_renderer (
             end
             default: begin // ---- 게임 화면
                 v = fA; e = fA_e;
-                if (e && (hA || hB || hC)) begin
+                if (e && hud_hit) begin
                     v = hA ? chA : hB ? chB : chC; e = 1'b0;
                 end
-                if (!r && dn0 != 8'd0) begin v = dn0; e = 1'b0; end
-                if (!r && dn1 != 8'd0) begin v = dn1; e = 1'b0; end
+                // 피해 숫자: 결과 문구와 겹치는 칸은 문구가 이김 (유성 때는 숫자가 이김)
+                if (!r && dn0 != 8'd0 && (num_wins || !hud_hit)) begin v = dn0; e = 1'b0; end
+                if (!r && dn1 != 8'd0 && (num_wins || !hud_hit)) begin v = dn1; e = 1'b0; end
                 // 폭발
                 if (fx_on && r == fx_row && c == fx_col) begin
                     v = {5'd0, SLOT_SPR}; e = 1'b0;
                 end else if (fx_on && fx_big && fx_t >= 5'd4 && fx_t < 5'd16 && r == fx_row &&
-                             (c == fx_col + 4'd1 || c + 4'd1 == fx_col) && e) begin
+                             ({1'b0, c} == fx_col + 5'd1 || c + 5'd1 == {1'b0, fx_col}) && e) begin
                     v = CH_STAR; e = 1'b0;
                 end
                 // 포탄 궤적

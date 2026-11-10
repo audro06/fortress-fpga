@@ -47,24 +47,20 @@ module rgb_ctrl (
         end
     endfunction
 
-    reg [2:0] col [0:3];
-    integer i;
-    always @(*) begin
-        for (i = 0; i < 4; i = i + 1) begin
-            if (title)
-                col[i] = rainbow(mod6({3'd0, t[7:3]} + i));
-            else if (roulette)
-                col[i] = rainbow(mod6(t + i));
-            else if (over)
-                col[i] = (winner == 2'd2) ? C_WHITE : (t[3] ? (winner[0] ? C_BLUE : C_RED) : C_OFF);
-            else
-                col[i] = turn ? C_BLUE : C_RED;
-            if (!title && flash_t != 6'd0 && flash_t[1])
-                col[i] = flash_color;
-        end
-    end
+    // 색 정하는 순서: 타이틀 무지개 > 번쩍임 > 룰렛 무지개 > 게임 끝 승자 색 > 차례 색
+    // (함수는 인자로 받은 값만 쓰게 했어요. 함수 안에서 모듈 신호를 직접 읽으면 시뮬레이터가 변화를 놓쳐요)
+    wire       flash_on = !title && (flash_t != 6'd0) && flash_t[1];
+    wire       rain     = title || (roulette && !flash_on);
+    wire [7:0] phase    = title ? {3'd0, t[7:3]} : t;             // 무지개가 흐르는 속도
+    wire [2:0] base     = flash_on ? flash_color
+                        : over ? ((winner == 2'd2) ? C_WHITE : (t[3] ? (winner[0] ? C_BLUE : C_RED) : C_OFF))
+                        : (turn ? C_BLUE : C_RED);
+    wire [2:0] c0 = rain ? rainbow(mod6(phase))         : base;
+    wire [2:0] c1 = rain ? rainbow(mod6(phase + 8'd1))  : base;
+    wire [2:0] c2 = rain ? rainbow(mod6(phase + 8'd2))  : base;
+    wire [2:0] c3 = rain ? rainbow(mod6(phase + 8'd3))  : base;
 
-    assign r = {col[3][2], col[2][2], col[1][2], col[0][2]};
-    assign g = {col[3][1], col[2][1], col[1][1], col[0][1]};
-    assign b = {col[3][0], col[2][0], col[1][0], col[0][0]};
+    assign r = {c3[2], c2[2], c1[2], c0[2]};
+    assign g = {c3[1], c2[1], c1[1], c0[1]};
+    assign b = {c3[0], c2[0], c1[0], c0[0]};
 endmodule

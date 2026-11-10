@@ -54,9 +54,10 @@ module piezo_ctrl #(
         if (rst) begin
             playing <= 1'b0; addr <= 7'd0; ms_cnt <= 10'd0; noise_cnt <= 4'd0; noise_half <= 14'd1000;
         end else if (sfx_req && sfx_id != 5'd0) begin
-            playing <= 1'b1;
-            addr    <= start_addr;
-            ms_cnt  <= 10'd0;
+            playing   <= 1'b1;
+            addr      <= start_addr;
+            ms_cnt    <= 10'd0;
+            noise_cnt <= 4'd0;          // 잡음이면 다음 1 ms에 바로 주파수를 새로 뽑음
         end else if (tick_ms) begin
             noise_cnt <= noise_cnt + 4'd1;
             if (noise_cnt == 4'd0)   // 16 ms마다 잡음 주파수를 새로 뽑음

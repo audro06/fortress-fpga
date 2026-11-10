@@ -26,15 +26,15 @@ module stepper_ctrl #(
     localparam [1:0] S_IDLE = 2'd0, S_HOME = 2'd1, S_SPIN = 2'd2;
 
     reg [1:0]  st;
-    reg [9:0]  pos;          // 0 ~ STEPS_PER_REV-1
-    reg [11:0] remain;       // 남은 스텝
+    reg [12:0] pos;          // 0 ~ STEPS_PER_REV-1 (1바퀴 8191스텝까지)
+    reg [14:0] remain;       // 남은 스텝
     reg [4:0]  wait_ms;
     reg [1:0]  phase;
     reg [2:0]  sector_d;
     reg [1:0]  sens_s;       // 동기화
 
-    wire [9:0]  target_pos = (target_sector * STEPS_PER_REV) / 6;
-    wire [9:0]  delta      = (target_pos + STEPS_PER_REV - pos) % STEPS_PER_REV;
+    wire [12:0] target_pos = (target_sector * STEPS_PER_REV) / 6;
+    wire [12:0] delta      = (target_pos + STEPS_PER_REV - pos) % STEPS_PER_REV;
     wire [2:0]  sector     = (pos * 6) / STEPS_PER_REV;
     wire        at_home    = (sens_s[1] == HOME_LEVEL);
     wire [4:0]  interval   = ((st == S_SPIN) && (remain <= SLOW_STEPS)) ? SLOW_MS : FAST_MS;
@@ -44,7 +44,7 @@ module stepper_ctrl #(
 
     always @(posedge clk) begin
         if (rst) begin
-            st <= S_IDLE; pos <= 10'd0; remain <= 12'd0; wait_ms <= 5'd0; phase <= 2'd0;
+            st <= S_IDLE; pos <= 13'd0; remain <= 15'd0; wait_ms <= 5'd0; phase <= 2'd0;
             sector_d <= 3'd0; sens_s <= 2'b00; sector_tick <= 1'b0;
         end else begin
             sens_s      <= {sens_s[0], sensor};
@@ -62,15 +62,15 @@ module stepper_ctrl #(
             end else if (tick_ms && st != S_IDLE) begin
                 if (st == S_HOME && at_home) begin
                     st  <= S_IDLE;
-                    pos <= 10'd0;
-                end else if (remain == 12'd0) begin
+                    pos <= 13'd0;
+                end else if (remain == 15'd0) begin
                     st  <= S_IDLE;
-                    if (st == S_HOME) pos <= 10'd0;
+                    if (st == S_HOME) pos <= 13'd0;
                 end else if (wait_ms + 5'd1 >= interval) begin
                     wait_ms <= 5'd0;
                     phase   <= phase + 2'd1;
-                    pos     <= (pos == STEPS_PER_REV - 1) ? 10'd0 : pos + 10'd1;
-                    remain  <= remain - 12'd1;
+                    pos     <= (pos == STEPS_PER_REV - 1) ? 13'd0 : pos + 13'd1;
+                    remain  <= remain - 15'd1;
                 end else begin
                     wait_ms <= wait_ms + 5'd1;
                 end

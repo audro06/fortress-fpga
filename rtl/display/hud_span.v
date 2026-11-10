@@ -21,20 +21,19 @@ module hud_span (
 
     wire [3:0] wabs  = wind[7] ? -wind[3:0] : wind[3:0];
 
+    // 길이(rom_len)로 시작 칸을 정하고, 그 칸 기준 k번째 글자(rom_ch)를 읽음
     wire [7:0] rom_ch;
     wire [4:0] rom_len;
-    reg  [3:0] k;
-    msg_rom u_msg (.id(id), .col(k), .ch(rom_ch), .len(rom_len));
-
     wire [4:0] len = (id == 6'd60) ? 5'd6 : (id == 6'd61) ? 5'd2 : (id == 6'd62) ? {1'b0, wabs} : rom_len;
     wire [4:0] start = (align == 2'd1) ? 5'd16 - len : (align == 2'd3) ? 5'd8 - {1'b0, len[4:1]} : {1'b0, col};
-    wire       inside = en && ({1'b0, c} >= start) && ({1'b0, c} < start + len);
+    wire       in_span = en && ({1'b0, c} >= start) && ({1'b0, c} < start + len);
+    wire [3:0] k = c - start[3:0];                     // 글자 묶음 안에서 몇 번째 글자인가
+    msg_rom u_msg (.id(id), .col(k), .ch(rom_ch), .len(rom_len));
 
     wire [6:0] tens = aim_ang / 10;
     wire [6:0] ones = aim_ang % 10;
 
     always @(*) begin
-        k = c - start[3:0];
         case (id)
             6'd60: case (k)
                        4'd0: ch = 8'h30 + {1'b0, tens};
@@ -50,5 +49,5 @@ module hud_span (
         endcase
     end
 
-    assign hit = inside && (ch != CH_SPACE);
+    assign hit = in_span && (ch != CH_SPACE);
 endmodule

@@ -26,3 +26,7 @@ webtalk*
 Thumbs.db
 *.swp
 .vscode/
+
+# Python
+__pycache__/
+*.pyc

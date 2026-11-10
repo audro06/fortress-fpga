@@ -65,6 +65,7 @@ module cpu_ai (
     wire [6:0] pivot = (my_pos - 4'd1) * 5 + 3;          // P2 대포 칸 기준
     wire [6:0] aidx  = a - 7'd30;
     wire [2:0] pm1   = p[2:0] - 3'd1;                    // 파워 8 -> 7
+    wire [1:0] werr  = rnd[1:0] % 3;                     // 보통 CPU가 바람을 잘못 읽는 정도 (0~2 -> -1~+1)
 
     trajectory u_traj (
         .clk(clk), .rst(rst), .start(tr_start), .step(tr_step), .stop(tr_stop),
@@ -90,9 +91,9 @@ module cpu_ai (
     wire [7:0]  tx       = seen0 * 5 + 5;
     wire signed [10:0] dxs = tr_px - $signed({3'd0, tx});
     wire [9:0]  dabs     = dxs[10] ? -dxs : dxs;
-    wire [9:0]  dist     = (c_direct && !c_dpi) ? 10'd0 : dabs + ((c_direct && c_dpi) ? 10'd100 : 10'd0);
+    wire [9:0]  miss_d     = (c_direct && !c_dpi) ? 10'd0 : dabs + ((c_direct && c_dpi) ? 10'd100 : 10'd0);
     wire [6:0]  adev     = (a > 7'd45) ? a - 7'd45 : 7'd45 - a;
-    wire [15:0] score    = {dist, 6'd0} + adev;
+    wire [15:0] score    = {miss_d, 6'd0} + adev;
 
     // 마무리 계산 (난수 실수 + 포탄 고르기)
     wire [6:0]  base_a = best_valid ? best_a : 7'd45;
@@ -130,7 +131,7 @@ module cpu_ai (
                 A_IDLE: if (plan_aim) begin
                     a <= MIN_ANG; p <= 4'd1; best_valid <= 1'b0; best_s <= 16'hFFFF;
                     // 보통 CPU는 바람을 ±1 틀리게 읽음
-                    wg  <= (expert || wind == 8'sd0) ? wind : wind + $signed({6'd0, rnd[1:0] % 3}) - 8'sd1;
+                    wg  <= (expert || wind == 8'sd0) ? wind : wind + $signed({6'd0, werr}) - 8'sd1;
                     ast <= A_START;
                 end
                 A_START: begin age <= 10'd0; ast <= A_STEP; end

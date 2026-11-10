@@ -123,7 +123,6 @@ module game_core (
     // =================================================================
     reg cfg_special, cfg_cpu, cfg_expert, cfg_events, cfg_move, cfg_long, cfg_walls;
     assign cpu_on = cfg_cpu;
-    wire snd_on = dip[6];               // DIP7 효과음은 언제든 바로 반영
 
     // =================================================================
     // 명령 펄스 (매 클럭 기본 0)
@@ -192,11 +191,10 @@ module game_core (
     assign p0_ang = p0_ang_w;
     assign p1_ang = p1_ang_w;
 
-    wire wall_breaks;
     wall_unit u_wall (
         .clk(clk), .rst(rst), .init(c_wall_init), .enable(cfg_walls), .layout(c_wall_layout),
         .hit(c_wall_hit), .hit_idx(c_wall_idx), .quake(c_wall_quake),
-        .wall_hp(wall_hp), .wall2_col(wall2_col), .hit_breaks(wall_breaks)
+        .wall_hp(wall_hp), .wall2_col(wall2_col)
     );
 
     wire       ev_active, ev_new, ev_strike;
@@ -373,6 +371,7 @@ module game_core (
     reg  [9:0] pend;                     // 아직 처리 안 한 키 누름
     reg        pend_rel;                 // 발사 키 뗌
     reg        boot;
+    wire [9:0] key1 = pend & (~pend + 10'd1);   // 밀린 키 중 번호가 가장 낮은 것 하나만 (한 클럭에 한 키씩 처리)
 
     wire [7:0] st_t_n = (st_t == 8'hFF) ? st_t : st_t + 8'd1;
     // 지금 맞은 벽 블록이 체력 1이면 무너짐
@@ -487,8 +486,6 @@ module game_core (
         end
     endtask
 
-    integer k;
-
     always @(posedge clk) begin
         // ---- 명령 펄스 기본값
         c_pinit <= 1'b0; c_acc_clr <= 1'b0; c_turn_begin <= 2'b00; c_ang_up <= 2'b00; c_ang_dn <= 2'b00;
@@ -520,6 +517,11 @@ module game_core (
             rep_up <= 5'd0; rep_dn <= 5'd0; pend <= 10'd0; pend_rel <= 1'b0;
             sfx_id <= SFX_NONE;
             boot <= 1'b1;
+            // 명령에 딸린 값 (펄스가 나갈 때만 의미가 있지만, 시뮬레이션에서 X가 안 보이게 0으로 둠)
+            c_sh_val <= SH_NORMAL; c_pos_val0 <= 4'd0; c_pos_val1 <= 4'd0; c_last_val <= 4'd0; c_pow_val <= 4'd0;
+            c_dmg_val0 <= 8'd0; c_dmg_val1 <= 8'd0; c_heal_val <= 8'd0; c_wall_idx <= 2'd0; c_wall_layout <= 2'd0;
+            c_ex_x <= 7'd0; c_ex_y <= 4'd0; c_ex_kind <= 2'd0; c_ex_big <= 1'b0;
+            c_shake_val <= 6'd0; c_rgb_t <= 6'd0; c_rgb_color <= C_OFF; c_msg_id <= 6'd0;
         end else begin
             // ---- 키 입력 모으기
             pend     <= pend | key_press;
@@ -717,8 +719,8 @@ module game_core (
 
                     ST_IMPACT: begin
                         if (st_t_n >= 8'd28 && !fx_on) begin
-                            if (double_left) begin
-                                // 두 발: 둘째 탄은 파워 ±1
+                            if (double_left && !anyone_dead) begin
+                                // 두 발: 둘째 탄은 파워 ±1 (첫 발로 이미 끝났으면 안 쏨)
                                 double_left <= 1'b0;
                                 launch_shell((rnd[1:0] == 2'd0 && gauge_pow > 4'd1) ? gauge_pow - 4'd1 :
                                              (rnd[1:0] == 2'd1 && gauge_pow < POW_MAX) ? gauge_pow + 4'd1 : gauge_pow);
@@ -824,10 +826,11 @@ module game_core (
                         seq <= 3'd1;
                     end
                     3'd1: begin c_turn_begin[turn] <= 1'b1; seq <= 3'd2; end
-                    3'd2: begin setup <= cfg_move && (turn ? p1_first : p0_first); seq <= 3'd3; end
-                    3'd3: begin c_ev_turn <= 1'b1; seq <= 3'd4; end
-                    3'd4: seq <= 3'd5;                        // event_unit 이 반영될 때까지 한 클럭
-                    3'd5: begin
+                    3'd2: seq <= 3'd3;                        // player_unit 이 턴 수를 올릴 때까지 한 클럭
+                    3'd3: begin setup <= cfg_move && (turn ? p1_first : p0_first); seq <= 3'd4; end
+                    3'd4: begin c_ev_turn <= 1'b1; seq <= 3'd5; end
+                    3'd5: seq <= 3'd6;                        // event_unit 이 반영될 때까지 한 클럭
+                    3'd6: begin
                         if (!(turn == 1'b0 && p0_first)) play(SFX_TURN);
                         if (ev_strike) go(ST_METEOR); else go(ST_INTRO);
                         aux_t <= 8'd0;
@@ -849,34 +852,34 @@ module game_core (
                     pend_rel <= key_release[K_FIRE];
                     if (st == ST_CHARGE && human) do_fire;
                 end else begin
-                    // 가장 낮은 번호의 키 하나 처리
-                    pend <= (pend & (pend - 10'd1)) | key_press;
-                    if (pend[K_FIRE]) begin
+                    // 밀린 키 중 하나(key1)만 처리하고 지움
+                    pend <= (pend & ~key1) | key_press;
+                    if (key1[K_FIRE]) begin
                         if (st == ST_TITLE) start_game;
                         else if (st == ST_OVER && st_t > 8'd40) start_game;
                         else if (human && st == ST_AIM) begin
                             c_pow_start <= 1'b1; go(ST_CHARGE);
                         end else if (human && st == ST_MOVE) next_turn;
                     end else if (human && st == ST_AIM) begin
-                        if (pend[K_UP]) begin
+                        if (key1[K_UP]) begin
                             c_ang_up[turn] <= 1'b1; rep_up <= 5'd1; play(SFX_TICK);
-                        end else if (pend[K_DOWN]) begin
+                        end else if (key1[K_DOWN]) begin
                             c_ang_dn[turn] <= 1'b1; rep_dn <= 5'd1; play(SFX_TICK);
-                        end else if (pend[K_LEFT] || pend[K_RIGHT]) begin
+                        end else if (key1[K_LEFT] || key1[K_RIGHT]) begin
                             play(SFX_ERR); c_fx_msg <= 1'b1; c_msg_id <= cfg_move ? MSG_FIRE_1ST : MSG_NO_MOVE;
-                        end else if (pend[K_SH1] || pend[K_SH2] || pend[K_SH3] || pend[K_SH4]) begin
+                        end else if (key1[K_SH1] || key1[K_SH2] || key1[K_SH3] || key1[K_SH4]) begin
                             if (!cfg_special) begin
                                 play(SFX_ERR); c_fx_msg <= 1'b1; c_msg_id <= MSG_NORM_ONLY;
                             end else begin
                                 c_sh_toggle[turn] <= 1'b1;
-                                c_sh_val <= pend[K_SH1] ? SH_DOUBLE : pend[K_SH2] ? SH_WIDE : pend[K_SH3] ? SH_ICE : SH_FIRE;
+                                c_sh_val <= key1[K_SH1] ? SH_DOUBLE : key1[K_SH2] ? SH_WIDE : key1[K_SH3] ? SH_ICE : SH_FIRE;
                                 play(SFX_ARM);
                             end
                         end
                     end else if (human && st == ST_MOVE) begin
-                        if (pend[K_LEFT] || pend[K_RIGHT]) begin
+                        if (key1[K_LEFT] || key1[K_RIGHT]) begin
                             if (mv_frozen) play(SFX_ERR);
-                            else try_move(pend[K_RIGHT] && !pend[K_LEFT]);
+                            else try_move(key1[K_RIGHT]);
                         end
                     end
                 end

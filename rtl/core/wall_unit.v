@@ -13,13 +13,11 @@ module wall_unit (
     input  wire [1:0] hit_idx,
     input  wire       quake,         // 지진: 모든 블록 한 단계씩
     output wire [5:0] wall_hp,       // {블록2, 블록1, 블록0}
-    output reg        wall2_col,     // 0 = 7칸, 1 = 8칸
-    output wire       hit_breaks     // 지금 hit_idx 블록이 맞으면 무너짐 (체력 1)
+    output reg        wall2_col      // 0 = 7칸, 1 = 8칸
 );
     reg [1:0] hp [0:2];
 
-    assign wall_hp    = {hp[2], hp[1], hp[0]};
-    assign hit_breaks = (hp[hit_idx] == 2'd1);
+    assign wall_hp = {hp[2], hp[1], hp[0]};
 
     // 한 단계 깎은 다음 떨어짐 처리
     reg [1:0] n0, n1, n2;

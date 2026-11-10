@@ -23,6 +23,24 @@ and not function endfunction task endtask signed unsigned wait disable fork join
 """.split())
 
 
+RESERVED = set("""always and assign automatic begin buf bufif0 bufif1 case casex casez cell cmos config deassign default
+defparam design disable edge else end endcase endconfig endfunction endgenerate endmodule endprimitive endspecify endtable
+endtask event for force forever fork function generate genvar highz0 highz1 if ifnone incdir include initial inout input
+instance integer join large liblist library localparam macromodule medium module nand negedge nmos nor noshowcancelled not
+notif0 notif1 or output parameter pmos posedge primitive pull0 pull1 pulldown pullup pulsestyle_onevent pulsestyle_ondetect
+rcmos real realtime reg release repeat rnmos rpmos rtran rtranif0 rtranif1 scalared showcancelled signed small specify
+specparam strong0 strong1 supply0 supply1 table task time tran tranif0 tranif1 tri tri0 tri1 triand trior trireg unsigned use
+vectored wait wand weak0 weak1 while wire wor xnor xor""".split())
+# SystemVerilog 예약어 (파일을 SV로 읽는 도구를 쓸 때를 대비)
+RESERVED_SV = set("""alias always_comb always_ff always_latch assert assume before bind bins binsof bit break byte chandle
+checker class clocking const constraint context continue cover covergroup coverpoint cross dist do endchecker endclass
+endclocking endgroup endinterface endpackage endprogram endproperty endsequence enum expect export extends extern final
+first_match foreach forkjoin iff ignore_bins illegal_bins import inside int interface intersect join_any join_none let local
+logic longint matches modport new null package packed priority program property protected pure rand randc randcase
+randsequence ref return sequence shortint shortreal solve static string struct super tagged this throughout timeprecision
+timeunit type typedef union unique var virtual void wait_order wildcard with within""".split())
+
+
 def strip(src):
     src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
     src = re.sub(r"//[^\n]*", "", src)
@@ -148,6 +166,8 @@ def main():
         balance(name, body, errs)
         decl = declared_names(md["header"], md["params"], body)
         decl |= set(md["ports"])
+        for bad in sorted((decl | {name}) & (RESERVED | RESERVED_SV)):
+            errs.append(f"{name}: 예약어 '{bad}' 를 이름으로 씀")
         # 인스턴스
         inst_re = re.compile(r"\b(\w+)\s*(#\s*\((?:[^()]|\([^()]*\))*\))?\s+(\w+)\s*\(((?:[^;])*?)\)\s*;", re.S)
         inst_names = set()
