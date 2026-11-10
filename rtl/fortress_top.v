@@ -72,6 +72,14 @@ module fortress_top #(
 
     // ------------------------------------------------------------ 게임 본체
     wire        roul_busy, roul_tick, roul_home, roul_spin;
+    // DIP7 OFF = 조용 모드: 효과음과 함께 서보·스텝모터 출력도 끄고, 룰렛은 바로 끝난 것으로 처리
+    wire        motors_on = dip_s[6];
+    wire        roul_busy_m, roul_tick_m, servo_m;
+    wire [3:0]  step_coil_m;
+    assign roul_busy = motors_on ? roul_busy_m : 1'b0;
+    assign roul_tick = motors_on ? roul_tick_m : 1'b0;
+    assign servo     = motors_on ? servo_m     : 1'b0;
+    assign step_coil = motors_on ? step_coil_m : 4'b0000;
     wire [2:0]  roul_target;
 
     wire [3:0]  st;
@@ -187,12 +195,12 @@ module fortress_top #(
 
     // ------------------------------------------------------------ 모터 / 소리
     servo_ctrl #(.CLK_HZ(CLK_HZ), .MIN_US(SERVO_MIN_US), .MAX_US(SERVO_MAX_US)) u_servo (
-        .clk(clk), .rst(rst), .tick_frame(tick_frame), .target_deg(servo_deg), .cur_deg(), .servo(servo)
+        .clk(clk), .rst(rst), .tick_frame(tick_frame), .target_deg(servo_deg), .cur_deg(), .servo(servo_m)
     );
 
     stepper_ctrl #(.STEPS_PER_REV(STEPS_PER_REV), .HOME_LEVEL(STEP_HOME_LEVEL)) u_step (
         .clk(clk), .rst(rst), .tick_ms(tick_ms), .home(roul_home), .spin(roul_spin), .target_sector(roul_target),
-        .sensor(step_sensor), .busy(roul_busy), .sector_tick(roul_tick), .coil(step_coil)
+        .sensor(step_sensor), .busy(roul_busy_m), .sector_tick(roul_tick_m), .coil(step_coil_m)
     );
 
     piezo_ctrl #(.CLK_HZ(CLK_HZ)) u_piezo (
