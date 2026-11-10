@@ -30,3 +30,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Vivado 프로젝트 (scripts/create_project.tcl 이 만듦)
+vivado/
+*.xpr
