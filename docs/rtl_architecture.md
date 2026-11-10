@@ -36,7 +36,7 @@ fortress_top
 |---|---|---|
 | TITLE | 포신 흔들기, 5 누르면 시작 | START |
 | START | DIP 읽기, 객체 초기화, 벽 배치 난수 | NEXT |
-| NEXT | 차례 바꾸기, 턴 수, 이벤트 턴 처리 (클럭 단위 6단계) | INTRO 또는 METEOR |
+| NEXT | 차례 바꾸기, 턴 수, 이벤트 턴 처리 (클럭 단위 7단계) | INTRO 또는 METEOR |
 | INTRO | 이름 표시 45틱. 이벤트 턴이면 룰렛 → 적용 | AIM 또는 MOVE(첫 턴) |
 | AIM | 2/8 각도(길게 누르면 반복), 1/3/7/9 포탄, 5 누르면 충전. CPU는 계획대로 각도 돌림 | CHARGE |
 | CHARGE | 파워 왕복, 5 떼면 발사 (CPU는 목표 파워에서) | FLIGHT |
@@ -54,7 +54,8 @@ fortress_top
 ## 클럭과 타이밍
 - 모든 모듈이 `clk` 하나(기본 1 MHz)를 쓰고, 느린 동작은 `tick_frame`(30 Hz), `tick_ms`(1 kHz) enable로 맞춰요.
 - CPU 탐색: 408가지 x 최대 600걸음 x 2클럭. 보통 수십 ms라 조준 연출(10틱) 전에 끝나요.
-- LCD 한 바퀴: 98바이트 x 약 52 us = 약 5 ms.
+- LCD 한 바퀴: 99바이트 x 약 105 us = 약 10 ms.
+- 명령 펄스는 보낸 다음 클럭에 객체가 받고, 그 결과는 그다음 클럭부터 보여요. 그래서 "명령 → 결과 읽기" 사이에는 한 클럭을 쉬어요 (NEXT 단계, 탄착 2단계가 그 예).
 
 ## 보드에서 확인할 것 (파라미터로 빼 둠)
 | 항목 | 기본값 | 바꾸는 곳 |
@@ -63,10 +64,27 @@ fortress_top
 | 버튼 눌림 극성 | 눌림 = 1 | `KEY_ACTIVE_LOW` |
 | DIP 극성 | ON = 1 | `DIP_ACTIVE_LOW` |
 | 7세그 자리 순서 | S0 = 맨 왼쪽 | `seg8_ctrl #(REVERSE)` |
+| 버튼 방식 | Button Switch (핀 하나씩) | 보드 전환 스위치가 있으면 Button 쪽 |
+| LCD 글자 쓰기 대기 | 100 us | `lcd_ctrl #(EXEC_US)` (글자가 빠지면 늘리기) |
 | 서보 펄스 폭 | 0.7 ms ~ 2.3 ms | `SERVO_MIN_US`, `SERVO_MAX_US` |
 | 스텝모터 1바퀴 스텝 | 200 | `STEPS_PER_REV` |
 | 원점 센서 감지 값 | 1 | `STEP_HOME_LEVEL` |
 
 ## 파일 생성
 - `tools/gen_roms.py`: 시뮬레이터 수식으로 `rom/*.mem`, `rtl/include/glyph_ids.vh`, `msg_ids.vh`, `rtl/output/sfx_rom.v`, `sim/tb_trajectory.v` 생성
-- `tools/check_rtl.py`: 포트 이름·선언·begin/end 짝 정적 검사 (Vivado 합성을 대신하진 못해요)
+- `tools/check_rtl.py`: 포트 이름·선언·begin/end 짝·예약어 정적 검사 (Vivado 합성을 대신하진 못해요)
+
+## 검증 (Vivado 없이 돌린 것)
+`tools/minisim.py`는 이 레포의 RTL만 읽을 수 있는 작은 Verilog 시뮬레이터예요(클럭 하나, 0/1만, 비트 폭·부호 규칙은 표준대로).
+`tools/sim_tests.py`가 이걸로 아래를 검사해요.
+
+| 검사 | 내용 |
+|---|---|
+| trajectory | 시뮬레이터 수식으로 만든 정답 104개와 비교 |
+| servo / piezo / stepper | 1 MHz에서 펄스 폭(0.7~2.3 ms, 주기 20 ms), 음 주파수와 길이, 원점 찾기·룰렛 목표 칸 |
+| lcd_ctrl | 초기화 명령 6개와 간격, 갱신 99바이트 내용, 흔들림·ON/OFF 명령 |
+| keypad | 채터링 걸러내기, 키 10개 매핑 |
+| reset | 아무 상태에서 `#` → 타이틀 → 깨끗한 새 판 |
+| game / cpu | 무작위로 키를 눌러 여러 판을 끝까지 진행. 포탄 한 발마다 탄착·피해·얼음·벽 파손을 기준 모델(`simlib.ref_shot`, 웹 시뮬레이터 수식)과 비교하고, 위치·각도·체력 범위, 용암, 이벤트 주기·내용, 승자 판정을 매 클럭 확인. 일부 판은 레지스터 초기값을 아무 값으로 넣어서 리셋 누락도 봄 |
+
+한계: 합성·타이밍·핀 문제, X 전파, Vivado 문법 차이는 못 잡아요. 보드에 올리기 전에 Vivado에서 `tb_trajectory`, `tb_fortress_top` 시뮬레이션과 합성을 꼭 해 보세요.

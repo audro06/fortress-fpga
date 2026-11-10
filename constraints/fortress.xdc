@@ -10,6 +10,10 @@ set_property -dict { PACKAGE_PIN B6  IOSTANDARD LVCMOS33 } [get_ports clk]
 create_clock -name sys_clk -period 1000.000 [get_ports clk]
 
 ## ---- 키패드 버튼 KEY01..KEY12 = 1 2 3 / 4 5 6 / 7 8 9 / * 0 #
+##   버튼 12개를 핀 하나씩 따로 읽는 "Button Switch" 방식으로 써요 (수업 실습과 같음).
+##   핀맵에는 KEY06~KEY12 핀이 키패드 행/열(r03~r00, c02~c00) 겸용으로도 적혀 있어요.
+##   보드에 Button/Keypad 전환 스위치가 있으면 Button 쪽으로 두세요.
+##   눌렀을 때 0이 들어오는 보드면 fortress_top 의 KEY_ACTIVE_LOW 를 1로 바꾸세요.
 set_property -dict { PACKAGE_PIN K4  IOSTANDARD LVCMOS33 } [get_ports {key[0]}]
 set_property -dict { PACKAGE_PIN N8  IOSTANDARD LVCMOS33 } [get_ports {key[1]}]
 set_property -dict { PACKAGE_PIN N4  IOSTANDARD LVCMOS33 } [get_ports {key[2]}]

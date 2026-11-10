@@ -135,6 +135,11 @@ def golden_cases():
     return out
 
 
+def pad(used, size, word):
+    """메모리 크기만큼 남는 자리를 채움 ($readmemh 가 '파일이 짧다'고 경고하지 않게)"""
+    return "// unused\n" + (word + "\n") * (size - used) if size > used else ""
+
+
 def write(rel, text):
     path = os.path.join(ROOT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -159,13 +164,13 @@ def main():
     for a in range(30, 91):
         for y, r in enumerate(cannon_rows(a)):
             o += hexn(r, 2) + (f"  // {a} deg" if y == 0 else "") + "\n"
-    write("rom/cannon_rom.mem", o)
+    write("rom/cannon_rom.mem", o + pad(61 * 8, 512, "00"))
 
     o = "// glyph ROM: 8 rows per glyph (bit4 = left). ids in rtl/include/glyph_ids.vh\n"
     for n, rows in GLYPHS:
         for y, r in enumerate(rows):
             o += hexn(r, 2) + (f"  // {n}" if y == 0 else "") + "\n"
-    write("rom/glyph_rom.mem", o)
+    write("rom/glyph_rom.mem", o + pad(len(GLYPHS) * 8, 256, "00"))
 
     o = "// glyph_rom.mem 그림 번호 (자동 생성: tools/gen_roms.py). ROM 주소 = {번호, 행[2:0]}\n"
     for i, (n, _) in enumerate(GLYPHS):
@@ -179,8 +184,8 @@ def main():
         for i, ch in enumerate(m.ljust(16)):
             o += hexn(ord(ch), 2) + (f"  // {m}" if i == 0 else "") + "\n"
         ln += hexn(len(m), 2) + f"  // {m}\n"
-    write("rom/msg_rom.mem", o)
-    write("rom/msg_len.mem", ln)
+    write("rom/msg_rom.mem", o + pad(len(MSGS) * 16, 1024, "20"))
+    write("rom/msg_len.mem", ln + pad(len(MSGS), 64, "00"))
 
     o = "// 메시지 번호 (자동 생성: tools/gen_roms.py)\n"
     used = set()

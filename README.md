@@ -18,7 +18,7 @@
 | `rom/` | ROM 초기화 파일 (`.mem`) — vel/muzzle/cannon/glyph/msg |
 | `sim/` | 테스트벤치 (`tb_trajectory.v`, `tb_fortress_top.v`) |
 | `constraints/` | 핀 제약 파일 `fortress.xdc` |
-| `tools/` | ROM 생성기 `gen_roms.py`, 정적 검사 `check_rtl.py` |
+| `tools/` | ROM 생성기 `gen_roms.py`, 정적 검사 `check_rtl.py`, 간이 시뮬레이터 `minisim.py` + 회귀 테스트 `sim_tests.py` |
 
 ## Vivado 프로젝트 만들기
 1. **Design Sources**: `rtl/` 아래 `.v` 전부 + `rtl/include/*.vh` 를 추가해요. (`.vh` 는 include 파일이라 Vivado가 이름으로 찾아요)
@@ -36,22 +36,33 @@ python3 tools/gen_roms.py
 python3 tools/check_rtl.py     # 포트 이름·선언·begin/end 짝 검사
 ```
 
+## Vivado 없이 로직 돌려 보기
+`tools/minisim.py`는 이 레포의 RTL만 읽는 작은 Verilog 시뮬레이터예요. 노트북에 Python만 있으면 돼요.
+```
+python3 tools/sim_tests.py units     # 모듈 단위 검사 (탄도, 서보, Piezo, 스텝모터, LCD, 키패드)
+python3 tools/sim_tests.py game 3    # 무작위 플레이 3판 (포탄마다 기준 모델과 비교)
+python3 tools/sim_tests.py cpu 2     # CPU 대전 2판
+python3 tools/sim_tests.py           # 전부
+```
+RTL을 고친 뒤에는 이걸 한 번 돌려 보세요. 무엇을 검사하는지와 한계는 [docs/rtl_architecture.md](docs/rtl_architecture.md)의 "검증"에 있어요.
+Vivado 시뮬레이션·합성을 대신하지는 못해요.
+
 ## 협업 규칙
 1. 한 모듈은 한 사람이 담당하고, 담당자는 아래 표에 적어요.
 2. Vivado 프로젝트 폴더는 올리지 않아요(`.gitignore` 처리). 소스(`rtl/`, `sim/`, `rom/`, `constraints/`)만 올려요.
 3. 모듈을 올릴 때는 `sim/`에 테스트벤치도 같이 올려요.
 4. 포트·단위(1/256 픽셀 등)를 바꾸면 `docs/`도 같이 고쳐요.
-5. 올리기 전에 `python3 tools/check_rtl.py` 를 한 번 돌려요.
+5. 올리기 전에 `python3 tools/check_rtl.py` 와 `python3 tools/sim_tests.py units` 를 한 번 돌려요.
 
 ## 담당 표
 | 모듈 | 담당 | 상태 |
 |---|---|---|
 | trigger (입력 에지 검출) | | 완료 |
-| keypad_ctrl / debounce | | 작성 (보드 확인 전) |
-| trajectory (탄도) | | 작성, 정답 벡터 테벤 있음 (Vivado 시뮬 전) |
-| collision / impact_calc | | 작성 (보드 확인 전) |
-| game_core + player/wall/event/power/fx | | 작성 (보드 확인 전) |
-| cpu_ai | | 작성 (보드 확인 전) |
-| LCD (lcd_ctrl, lcd_driver, lcd_renderer ...) | | 작성 (보드 확인 전) |
-| 7세그·LED·Full color LED | | 작성 (보드 확인 전) |
-| 서보·스텝모터·Piezo | | 작성 (보드 확인 전) |
+| keypad_ctrl / debounce | | minisim 검사 통과 (보드 확인 전) |
+| trajectory (탄도) | | minisim 에서 정답 104개 일치 (Vivado 시뮬 전) |
+| collision / impact_calc | | 무작위 플레이에서 기준 모델과 일치 (보드 확인 전) |
+| game_core + player/wall/event/power/fx | | 무작위 플레이 통과 (보드 확인 전) |
+| cpu_ai | | CPU 대전 통과 (보드 확인 전) |
+| LCD (lcd_ctrl, lcd_driver, lcd_renderer ...) | | minisim 검사 통과 (보드 확인 전) |
+| 7세그·LED·Full color LED | | 값 확인 (보드 확인 전) |
+| 서보·스텝모터·Piezo | | 1 MHz 타이밍 확인 (보드 확인 전) |
