@@ -67,6 +67,7 @@ localparam [3:0] ST_METEOR = 4'd8;
 localparam [3:0] ST_OVER   = 4'd9;
 localparam [3:0] ST_START  = 4'd10;   // 내부: 새 게임 준비 (1~2클럭)
 localparam [3:0] ST_NEXT   = 4'd11;   // 내부: 다음 턴 준비 (몇 클럭)
+localparam [3:0] ST_SETUP  = 4'd12;   // 설정 화면: DIP 상태를 보여 주고, 5를 누르면 그때 DIP을 읽어 시작
 
 // ---- CGRAM 슬롯 (게임 화면에서 용도 고정)
 localparam [2:0] SLOT_P1     = 3'd0;

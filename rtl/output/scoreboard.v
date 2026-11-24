@@ -1,8 +1,11 @@
 // 8자리 7세그에 보낼 글자 만들기 (조합회로)
 //   게임 중: [P1 체력 3자리][가운데 2자리][P2 체력 3자리], 점은 자리2·자리4 (시뮬레이터와 같음)
 //   타이틀 : "  PLAy  " <-> "--------" 깜빡임
+//   설정   : DIP 상태 그대로 (켜진 스위치는 번호, 꺼진 스위치는 '-'), 예: "12-4-678"
 module scoreboard (
     input  wire        title,
+    input  wire        setup,
+    input  wire [7:0]  dip,
     input  wire        blink,       // 타이틀 깜빡임 위상
     input  wire [7:0]  hp0,         // P1 표시 체력 (0~255)
     input  wire [7:0]  hp1,
@@ -26,8 +29,20 @@ module scoreboard (
         end
     endfunction
 
+    function [4:0] dipc;               // DIP i 자리 글자
+        input       on;
+        input [3:0] num;
+        begin
+            dipc = on ? {1'b0, num} : DASH;
+        end
+    endfunction
+
     always @(*) begin
-        if (title) begin
+        if (setup) begin
+            chars = {dipc(dip[0], 4'd1), dipc(dip[1], 4'd2), dipc(dip[2], 4'd3), dipc(dip[3], 4'd4),
+                     dipc(dip[4], 4'd5), dipc(dip[5], 4'd6), dipc(dip[6], 4'd7), dipc(dip[7], 4'd8)};
+            dp    = 8'h00;
+        end else if (title) begin
             chars = blink ? {BL, BL, LP, LL, LA, LY, BL, BL}
                           : {DASH, DASH, DASH, DASH, DASH, DASH, DASH, DASH};
             dp    = 8'h00;

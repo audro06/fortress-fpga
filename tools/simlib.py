@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from minisim import Sim, _ts      # noqa: E402
 import gen_roms                   # noqa: E402
 
-ST = ["TITLE", "INTRO", "AIM", "CHARGE", "FLIGHT", "IMPACT", "RESULT", "MOVE", "METEOR", "OVER", "START", "NEXT"]
+ST = ["TITLE", "INTRO", "AIM", "CHARGE", "FLIGHT", "IMPACT", "RESULT", "MOVE", "METEOR", "OVER", "START", "NEXT", "SETUP"]
 KEYS = "123456789*0#"
 SHELL = {"normal": 0, "double": 1, "wide": 2, "ice": 3, "fire": 4}
 SHELL_KEY = {1: "1", 2: "3", 3: "7", 4: "9"}
@@ -84,6 +84,10 @@ class Game:
         bit = 1 << KEYS.index(key)
         self.sim.set("key", (k | bit) if on else (k & ~bit))
 
+    def set_dip(self, dip):
+        """dip: DIP1..DIP8 순서 문자열 ('1' = ON)"""
+        self.sim.set("dip", sum(1 << i for i, c in enumerate(dip) if c == "1"))
+
     def press(self, key, hold_clocks=20, gap_clocks=20):
         self.hold(key, True)
         self.clock(hold_clocks)
@@ -141,7 +145,11 @@ class Game:
 
     # ------------------------------------------------------------ 조작 묶음
     def start(self):
-        self.wait("TITLE")
+        """타이틀(또는 게임 끝)에서 5 -> 설정 화면에서 5 -> 게임 시작"""
+        self.wait(("TITLE", "OVER", "SETUP"))
+        if self.st != "SETUP":
+            self.press("5")
+            self.wait("SETUP", 20)
         self.press("5")
         self.wait(("MOVE", "AIM"), 400)
 

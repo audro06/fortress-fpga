@@ -92,11 +92,14 @@ MSGS = ["P1 TURN", "P2 TURN", "CPU TURN", "P1 MOVE", "P2 MOVE", "CPU MOVE", "MOV
         "DIRECT!", "HIT!", "MISS", "OUT!", "OOPS!", "BLOCKED", "WALL DOWN", "FROZEN!", "BRRR..", "BURN!", "BACKFIRE",
         "EVENT!", "LAVA!", "LOW-G!", "GUST!", "QUAKE!", "FOG!", "METEOR!", "FIRE 1ST", "NORM", "X2", "WIDE", "ICE", "FIRE",
         "FORTRESS", "P1 WINS!", "P2 WINS!", "CPU WINS!", "DRAW GAME!",
-        "NO MOVE", "NORM ONLY", " PUSH 5 TO START", "SHELLS", " PUSH 5 : AGAIN "]
+        "NO MOVE", "NORM ONLY", " PUSH 5 TO START", "SHELLS", " PUSH 5 : AGAIN ",
+        # 설정 화면 (DIP 1~8 설명은 이 순서 그대로 써야 해요: MSG_1_SPECIAL_SH + 번호)
+        "SETUP", "5:START", "ON", "OFF",
+        "1 SPECIAL SH", "2 VS CPU", "3 CPU HARD", "4 EVENTS", "5 MOVE", "6 HP 100", "7 SND+MOTOR", "8 WALL"]
 
 
 def msg_name(m):
-    n = "MSG_" + m.strip().replace("!", "_X").replace(" ", "_").replace(":", "_").replace(".", "_").replace("-", "_")
+    n = "MSG_" + m.strip().replace("!", "_X").replace(" ", "_").replace(":", "_").replace(".", "_").replace("-", "_").replace("+", "_")
     while "__" in n:
         n = n.replace("__", "_")
     return n.rstrip("_")

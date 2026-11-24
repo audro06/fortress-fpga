@@ -3,6 +3,7 @@
 
     python3 tools/sim_tests.py            # 전부 (몇 분 걸림)
     python3 tools/sim_tests.py units      # 모듈 단위 검사만
+    python3 tools/sim_tests.py setup      # 설정 화면
     python3 tools/sim_tests.py game 3     # 무작위 플레이 3판 (2인)
     python3 tools/sim_tests.py cpu 2      # CPU 대전 2판
 
@@ -486,6 +487,9 @@ def play(dip, seed, max_turns=80, verbose=False, cpu=False, randinit=None, best=
         a, b = g.screen()
         check(("WINS!" in a) or ("DRAW" in a), f"게임 끝 화면: {a}")
         g.press("5")
+        g.wait("SETUP", 20)
+        check(g.st == "SETUP", "게임 끝에서 5 -> 설정 화면이 아님")
+        g.press("5")
         g.wait(("MOVE", "AIM", "INTRO"), 200)
         check(g.hp() == (g.g("u_p0.max_hp"),) * 2 and g.pos() == (0, 15), "다시 시작 뒤 초기화가 안 됨")
     print(f"  dip {dip} seed {seed}: {'끝' if over else '미완'} {turns}턴, 포탄 {mon.n_shots}발 {mon.kinds}, 이벤트 {mon.events}, "
@@ -530,6 +534,68 @@ def test_reset():
     print("reset: 8가지 시점에서 # -> 타이틀 -> 새 판 확인")
 
 
+def test_setup():
+    """타이틀 -> 5 -> 설정 화면: DIP 상태 표시, 스위치 바꾸면 그 설명으로, 4·6 넘기기, # 취소, 5로 시작"""
+    names = ["SPECIAL SH", "VS CPU", "CPU HARD", "EVENTS", "MOVE", "HP 100", "SND+MOTOR", "WALL"]
+    g = Game(dip="10011011")
+    g.wait("TITLE")
+    g.press("5")
+    check(g.st == "SETUP", f"타이틀에서 5 -> {g.st}")
+
+    def dip_txt(dip):
+        return "".join(str(i + 1) if c == "1" else "-" for i, c in enumerate(dip))
+
+    def screen_ok(dip, sel, tag):
+        g.tick(1)
+        while g.g("gt") & 8:                      # 고른 스위치가 깜빡여 빈칸인 때를 피함
+            g.tick(1)
+        a, b = g.screen()
+        exp_b = f"{sel + 1} {names[sel]}".ljust(16 - (2 if dip[sel] == "1" else 3)) + ("ON" if dip[sel] == "1" else "OFF")
+        check(a[8:] == dip_txt(dip), f"{tag}: 윗줄 DIP {a!r}")
+        check(a[:8].strip() in ("SETUP", "5:START"), f"{tag}: 윗줄 문구 {a!r}")
+        check(b == exp_b, f"{tag}: 아랫줄 {b!r} (기대 {exp_b!r})")
+        check(g.seg8() == dip_txt(dip), f"{tag}: 7세그 {g.seg8()!r}")
+        check(g.sim.get("led") == int(dip[::-1], 2), f"{tag}: LED {g.sim.get('led'):08b}")
+
+    dip = "10011011"
+    screen_ok(dip, 0, "처음")
+    # 스위치를 바꾸면 그 스위치 설명으로 넘어감
+    for i in (2, 6, 1, 7):
+        dip = dip[:i] + ("0" if dip[i] == "1" else "1") + dip[i + 1:]
+        g.set_dip(dip)
+        g.tick(3)
+        check(g.g("set_sel") == i, f"DIP{i + 1} 바꿨는데 설명 {g.g('set_sel') + 1}")
+        screen_ok(dip, i, f"DIP{i + 1} 바꿈")
+    # 가만히 두면 3초(바꾼 직후) 뒤부터 1.5초마다 다음 설명
+    sel = g.g("set_sel")
+    g.tick(100)
+    check(g.g("set_sel") == (sel + 1) % 8, "바꾼 뒤 설명이 안 넘어감")
+    g.tick(47)
+    check(g.g("set_sel") == (sel + 2) % 8, "1.5초마다 안 넘어감")
+    # 4·6 으로 넘기기
+    sel = g.g("set_sel")
+    g.press("6"); check(g.g("set_sel") == (sel + 1) % 8, "6 으로 다음 설명")
+    g.press("4"); g.press("4"); check(g.g("set_sel") == (sel - 1) % 8, "4 로 이전 설명")
+    check(g.st == "SETUP", "설정 화면에서 4·6 뒤 상태")
+    # # 이면 타이틀로, 다시 5 -> 설정 화면
+    g.press("#"); g.clock(30)
+    check(g.st == "TITLE", f"설정에서 # -> {g.st}")
+    g.press("5")
+    check(g.st == "SETUP" and g.g("set_sel") == 0, "다시 설정 화면")
+    # 설정 화면에서 바꾼 DIP 이 시작할 때 반영되는지
+    dip = "01001100"                              # 특수X, CPU, 이동, 체력 100, 소리X, 벽X
+    g.set_dip(dip); g.tick(3)
+    g.press("5")
+    g.wait(("MOVE", "AIM"), 400)
+    cfg = [g.g(n) for n in ("cfg_special", "cfg_cpu", "cfg_expert", "cfg_events", "cfg_move", "cfg_long", "cfg_walls")]
+    check(cfg == [0, 1, 0, 0, 1, 1, 0], f"시작 설정 {cfg}")
+    check(g.hp() == (100, 100), f"체력 {g.hp()}")
+    # 게임 중에 DIP 을 바꿔도 그 판 설정은 그대로
+    g.set_dip("10110011"); g.tick(5)
+    check(g.g("cfg_cpu") == 1 and g.g("cfg_special") == 0, "게임 중 DIP 변경이 반영됨")
+    print("setup: 표시(LCD·7세그·LED), 스위치 따라가기, 자동 넘김, 4·6, #, 시작 때 반영 확인")
+
+
 def test_game(n=3, cpu=False):
     #        특수 CPU 고수 이벤트 이동 체력 소리 벽
     dips = ["10011111", "10011011", "10010111", "00011110", "10001111", "10011101", "10011011", "00000010"]
@@ -550,6 +616,8 @@ def main():
     n = int(args[1]) if len(args) > 1 else 3
     if what in ("all", "units"):
         test_trajectory(); test_servo(); test_piezo(); test_stepper(); test_lcd_ctrl(); test_keypad(); test_seg_font()
+    if what in ("all", "setup"):
+        test_setup()
     if what in ("all", "reset"):
         test_reset()
     if what in ("all", "game"):

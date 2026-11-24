@@ -43,19 +43,19 @@
 10  //  PUSH 5 TO START
 06  // SHELLS
 10  //  PUSH 5 : AGAIN 
+05  // SETUP
+07  // 5:START
+02  // ON
+03  // OFF
+0C  // 1 SPECIAL SH
+08  // 2 VS CPU
+0A  // 3 CPU HARD
+08  // 4 EVENTS
+06  // 5 MOVE
+08  // 6 HP 100
+0B  // 7 SND+MOTOR
+06  // 8 WALL
 // unused
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
-00
 00
 00
 00

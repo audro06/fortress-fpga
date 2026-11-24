@@ -35,6 +35,7 @@ module game_core (
     output wire        cpu_on,
     output reg  [1:0]  winner,
     output reg  [6:0]  title_ang,
+    output reg  [2:0]  set_sel,         // 설정 화면에서 설명을 보여 주는 DIP 번호 (0 = DIP1)
 
     // ---- 플레이어 (화면용)
     output wire [3:0]  p0_pos,
@@ -119,7 +120,7 @@ module game_core (
     localparam [1:0] AL_LEFT = 2'd0, AL_RIGHT = 2'd1, AL_CENTER = 2'd3;
 
     // =================================================================
-    // 설정 (게임 시작 때 DIP을 읽어 고정)
+    // 설정 (설정 화면에서 5를 눌러 시작할 때 DIP을 읽어 고정)
     // =================================================================
     reg cfg_special, cfg_cpu, cfg_expert, cfg_events, cfg_move, cfg_long, cfg_walls;
     assign cpu_on = cfg_cpu;
@@ -368,6 +369,13 @@ module game_core (
     reg  [7:0] mv_w, mv_done;
     reg  [4:0] rep_up, rep_dn;
     reg        title_dir;
+    // 설정 화면: DIP 설명을 1.5초마다 하나씩 넘기고, 스위치를 바꾸면 그 스위치 설명으로 바로 가서 3초 보여 줌
+    reg  [7:0] set_t;
+    reg        set_hold;
+    reg  [7:0] dip_prev;
+    wire [7:0] dip_chg = dip ^ dip_prev;
+    wire [2:0] chg_idx = dip_chg[0] ? 3'd0 : dip_chg[1] ? 3'd1 : dip_chg[2] ? 3'd2 : dip_chg[3] ? 3'd3 :
+                         dip_chg[4] ? 3'd4 : dip_chg[5] ? 3'd5 : dip_chg[6] ? 3'd6 : 3'd7;
     reg  [9:0] pend;                     // 아직 처리 안 한 키 누름
     reg        pend_rel;                 // 발사 키 뗌
     reg        boot;
@@ -420,6 +428,15 @@ module game_core (
     task next_turn;
         begin
             st <= ST_NEXT; st_t <= 8'd0; seq <= 3'd0;
+        end
+    endtask
+
+    // 설정 화면으로 (타이틀·게임 끝에서 5)
+    task enter_setup;
+        begin
+            go(ST_SETUP);
+            set_sel <= 3'd0; set_t <= 8'd0; set_hold <= 1'b0; dip_prev <= dip;
+            play(SFX_ARM);
         end
     endtask
 
@@ -502,6 +519,7 @@ module game_core (
         if (rst) begin
             st <= ST_TITLE; st_t <= 8'd0; gt <= 8'd0; turn <= 1'b0; setup <= 1'b0; winner <= 2'd0;
             title_ang <= 7'd60; title_dir <= 1'b1;
+            set_sel <= 3'd0; set_t <= 8'd0; set_hold <= 1'b0; dip_prev <= 8'd0;
             cfg_special <= 1'b1; cfg_cpu <= 1'b0; cfg_expert <= 1'b0; cfg_events <= 1'b0;
             cfg_move <= 1'b1; cfg_long <= 1'b0; cfg_walls <= 1'b1;
             shot_type <= SH_NORMAL; res_msg <= MSG_MISS; double_left <= 1'b0; seq <= 3'd0;
@@ -643,13 +661,25 @@ module game_core (
                 if (sh_active && tr_active) sh_phase <= 2'd1;     // 이번 틱에 포탄 한 걸음
 
                 case (st)
-                    ST_TITLE: begin
+                    ST_TITLE, ST_SETUP: begin
                         if (title_dir) begin
                             if (title_ang >= 7'd88) title_dir <= 1'b0;
                             title_ang <= title_ang + 7'd2;
                         end else begin
                             if (title_ang <= 7'd32) title_dir <= 1'b1;
                             title_ang <= title_ang - 7'd2;
+                        end
+                        if (st == ST_SETUP) begin
+                            if (dip_chg != 8'd0) begin
+                                // 스위치를 바꿈: 그 스위치 설명으로
+                                dip_prev <= dip;
+                                set_sel  <= chg_idx; set_t <= 8'd0; set_hold <= 1'b1;
+                                play(dip[chg_idx] ? SFX_ARM : SFX_TICK);
+                            end else if (set_t >= (set_hold ? 8'd90 : 8'd45)) begin
+                                set_sel <= set_sel + 3'd1; set_t <= 8'd0; set_hold <= 1'b0;
+                            end else begin
+                                set_t <= set_t + 8'd1;
+                            end
                         end
                     end
 
@@ -855,11 +885,19 @@ module game_core (
                     // 밀린 키 중 하나(key1)만 처리하고 지움
                     pend <= (pend & ~key1) | key_press;
                     if (key1[K_FIRE]) begin
-                        if (st == ST_TITLE) start_game;
-                        else if (st == ST_OVER && st_t > 8'd40) start_game;
+                        if (st == ST_TITLE) enter_setup;
+                        else if (st == ST_SETUP) start_game;
+                        else if (st == ST_OVER && st_t > 8'd40) enter_setup;
                         else if (human && st == ST_AIM) begin
                             c_pow_start <= 1'b1; go(ST_CHARGE);
                         end else if (human && st == ST_MOVE) next_turn;
+                    end else if (st == ST_SETUP) begin
+                        // 4·6 으로 설명을 직접 넘겨 봄
+                        if (key1[K_LEFT] || key1[K_RIGHT]) begin
+                            set_sel <= key1[K_RIGHT] ? set_sel + 3'd1 : set_sel - 3'd1;
+                            set_t <= 8'd0; set_hold <= 1'b1;
+                            play(SFX_TICK);
+                        end
                     end else if (human && st == ST_AIM) begin
                         if (key1[K_UP]) begin
                             c_ang_up[turn] <= 1'b1; rep_up <= 5'd1; play(SFX_TICK);
@@ -953,8 +991,8 @@ module game_core (
         else                                  begin seg_mid0 = 5'd10; seg_mid1 = {3'd0, ev_next_in}; end
     end
 
-    assign shell_digit  = (st == ST_TITLE || st == ST_OVER) ? 5'd11 : {2'd0, shell_eff};
-    assign servo_deg    = (st == ST_TITLE) ? {1'b0, title_ang} : (turn ? 8'd180 - cang : {1'b0, cang});
+    assign shell_digit  = (st == ST_TITLE || st == ST_SETUP || st == ST_OVER) ? 5'd11 : {2'd0, shell_eff};
+    assign servo_deg    = (st == ST_TITLE || st == ST_SETUP) ? {1'b0, title_ang} : (turn ? 8'd180 - cang : {1'b0, cang});
     assign led_power    = cur_pow;
     assign rgb_roulette = (st == ST_INTRO) && ev_new && !ev_applied;
     assign charge_on    = (st == ST_CHARGE);

@@ -1,6 +1,7 @@
 // LED 8개
 //   게임 중 : 파워 게이지 (파워 p면 LED p개 켜짐)
 //   타이틀  : 한 칸이 왕복하는 불빛
+//   설정    : DIP 상태 그대로 (LED i = DIP i)
 //   게임 끝 : 번갈아 깜빡임
 module led_gauge (
     input  wire       clk,
@@ -8,6 +9,8 @@ module led_gauge (
     input  wire       tick_frame,
     input  wire       title,
     input  wire       over,
+    input  wire       setup,
+    input  wire [7:0] dip,
     input  wire [3:0] power,        // 1~8 (0이면 다 꺼짐)
     output reg  [7:0] led           // led[0] = LED_D1
 );
@@ -32,7 +35,9 @@ module led_gauge (
     wire [3:0] pos = (scan < 4'd8) ? scan : 4'd14 - scan;
 
     always @(*) begin
-        if (title)
+        if (setup)
+            led = dip;
+        else if (title)
             led = 8'h01 << pos;
         else if (over)
             led = t[2] ? 8'b1010_1010 : 8'b0101_0101;

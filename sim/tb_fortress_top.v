@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 // =====================================================================
 // fortress_top 통합 시뮬레이션 (1 MHz 클럭, 실제 시간으로 몇 초 분량)
-//   - 5를 눌러 게임 시작 -> 첫 턴 이동만 (P1, P2 둘 다 5로 넘김)
+//   - 5를 눌러 설정 화면 -> 5를 한 번 더 눌러 게임 시작 -> 첫 턴 이동만 (P1, P2 둘 다 5로 넘김)
 //   - P1: 각도 몇 번 올리고 5를 꾹 눌렀다 떼서 발사 -> 결과 화면까지 진행
 //   - LCD 버스를 엿들어서 화면이 바뀔 때마다 글자로 찍어요 (0~7 은 CGRAM 슬롯 번호로 표시)
 //   - FSM 상태가 바뀔 때마다 상태 이름과 체력을 찍어요
@@ -82,7 +82,8 @@ module tb_fortress_top;
                 4'd0: st_name = "TITLE";   4'd1: st_name = "INTRO";  4'd2: st_name = "AIM";
                 4'd3: st_name = "CHARGE";  4'd4: st_name = "FLIGHT"; 4'd5: st_name = "IMPACT";
                 4'd6: st_name = "RESULT";  4'd7: st_name = "MOVE";   4'd8: st_name = "METEOR";
-                4'd9: st_name = "OVER";    4'd10: st_name = "START"; default: st_name = "NEXT";
+                4'd9: st_name = "OVER";    4'd10: st_name = "START"; 4'd11: st_name = "NEXT";
+                default: st_name = "SETUP";
             endcase
         end
     endfunction
@@ -112,6 +113,10 @@ module tb_fortress_top;
 
     initial begin
         repeat (200_000) @(posedge clk);        // LCD 초기화 + 타이틀
+        $display("== 5 눌러 설정 화면");
+        press(4, 50);
+        wait_state(4'd12, 100);                 // 설정 화면
+        repeat (300_000) @(posedge clk);        // 설정 화면이 LCD에 찍히도록 0.3초
         $display("== 5 눌러 시작");
         press(4, 50);
         wait_state(4'd7, 3000);                 // P1 첫 이동

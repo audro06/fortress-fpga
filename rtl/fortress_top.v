@@ -87,6 +87,7 @@ module fortress_top #(
     wire        turn, setup, cpu_on;
     wire [1:0]  winner;
     wire [6:0]  title_ang;
+    wire [2:0]  set_sel;
     wire [3:0]  p0_pos, p1_pos;
     wire [6:0]  p0_ang, p1_ang;
     wire [7:0]  p0_disp, p1_disp;
@@ -123,7 +124,7 @@ module fortress_top #(
         .clk(clk), .rst(rst), .tick_frame(tick_frame), .rnd(rnd),
         .key_level(key_level), .key_press(key_press), .key_release(key_release), .dip(dip_s),
         .roul_busy(roul_busy), .roul_tick(roul_tick),
-        .st(st), .st_t(st_t), .gt(gt), .turn(turn), .setup(setup), .cpu_on(cpu_on), .winner(winner), .title_ang(title_ang),
+        .st(st), .st_t(st_t), .gt(gt), .turn(turn), .setup(setup), .cpu_on(cpu_on), .winner(winner), .title_ang(title_ang), .set_sel(set_sel),
         .p0_pos(p0_pos), .p1_pos(p1_pos), .p0_ang(p0_ang), .p1_ang(p1_ang), .p0_disp(p0_disp), .p1_disp(p1_disp),
         .p0_frz_show(p0_frz), .p1_frz_show(p1_frz), .p0_flash_inv(p0_inv), .p1_flash_inv(p1_inv),
         .vis0(vis0), .vis1(vis1), .q_en(q_en), .q_col(q_col), .m_en(m_en), .m_col(m_col),
@@ -146,6 +147,7 @@ module fortress_top #(
 
     lcd_renderer u_render (
         .st(st), .st_t(st_t), .gt(gt), .cpu_on(cpu_on), .winner(winner), .title_ang(title_ang),
+        .dip(dip_s), .set_sel(set_sel),
         .p0_pos(p0_pos), .p1_pos(p1_pos), .p0_ang(p0_ang), .p1_ang(p1_ang),
         .p0_frz(p0_frz), .p1_frz(p1_frz), .p0_inv(p0_inv), .p1_inv(p1_inv),
         .vis0(vis0), .vis1(vis1), .q_en(q_en), .q_col(q_col), .m_en(m_en), .m_col(m_col),
@@ -169,7 +171,7 @@ module fortress_top #(
     wire [39:0] seg_chars;
     wire [7:0]  seg_dp;
     scoreboard u_score (
-        .title(st == ST_TITLE), .blink(gt[4]), .hp0(p0_disp), .hp1(p1_disp),
+        .title(st == ST_TITLE), .setup(st == ST_SETUP), .dip(dip_s), .blink(gt[4]), .hp0(p0_disp), .hp1(p1_disp),
         .mid0(seg_mid0), .mid1(seg_mid1), .chars(seg_chars), .dp(seg_dp)
     );
     seg8_ctrl u_seg8 (
@@ -184,12 +186,13 @@ module fortress_top #(
     // ------------------------------------------------------------ LED / Full color LED
     led_gauge u_led (
         .clk(clk), .rst(rst), .tick_frame(tick_frame),
-        .title(st == ST_TITLE), .over(st == ST_OVER), .power(led_power), .led(led)
+        .title(st == ST_TITLE), .over(st == ST_OVER), .setup(st == ST_SETUP), .dip(dip_s),
+        .power(led_power), .led(led)
     );
 
     rgb_ctrl u_rgb (
         .clk(clk), .rst(rst), .tick_frame(tick_frame),
-        .title(st == ST_TITLE), .over(st == ST_OVER), .roulette(rgb_roulette), .turn(turn), .winner(winner),
+        .title(st == ST_TITLE || st == ST_SETUP), .over(st == ST_OVER), .roulette(rgb_roulette), .turn(turn), .winner(winner),
         .flash_color(rgb_flash_color), .flash_t(rgb_flash_t), .r(rgb_r), .g(rgb_g), .b(rgb_b)
     );
 

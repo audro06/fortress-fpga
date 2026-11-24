@@ -1,4 +1,4 @@
-// LCD 화면 합성기 (조합회로) - 시뮬레이터 fieldFrame() / titleFrame() / overFrame()
+// LCD 화면 합성기 (조합회로) - 시뮬레이터 fieldFrame() / titleFrame() / overFrame() + 설정 화면
 //   lcd_ctrl 이 주는 주소에 대해
 //     dd_addr {줄, 칸} -> 그 칸의 문자 코드 (0~7 = CGRAM 슬롯, 그 외 = 내장 문자)
 //     cg_addr {슬롯, 행} -> 그 슬롯 그림의 한 행 (5비트)
@@ -14,6 +14,8 @@ module lcd_renderer (
     input  wire        cpu_on,
     input  wire [1:0]  winner,
     input  wire [6:0]  title_ang,
+    input  wire [7:0]  dip,             // 지금 DIP 상태 (설정 화면 표시용)
+    input  wire [2:0]  set_sel,         // 설정 화면에서 설명 중인 DIP 번호
 
     input  wire [3:0]  p0_pos,
     input  wire [3:0]  p1_pos,
@@ -73,7 +75,8 @@ module lcd_renderer (
     `include "msg_ids.vh"
     `include "glyph_ids.vh"
 
-    wire [1:0] mode = (st == ST_TITLE) ? 2'd1 : (st == ST_OVER) ? 2'd2 : 2'd0;
+    // 0 게임, 1 타이틀, 2 게임 끝, 3 설정
+    wire [1:0] mode = (st == ST_TITLE) ? 2'd1 : (st == ST_OVER) ? 2'd2 : (st == ST_SETUP) ? 2'd3 : 2'd0;
     wire       r    = dd_addr[4];
     wire [3:0] c    = dd_addr[3:0];
 
@@ -115,6 +118,12 @@ module lcd_renderer (
                   else spA = {1'b1, MSG_SHELLS, 2'd0, 4'd1};
             2'd2: if (!r) spA = (winner == 2'd2) ? {1'b1, MSG_DRAW_GAME_X, 2'd0, 4'd3} : {1'b1, win_msg, 2'd3, 4'd0};
                   else    spA = {(st_t > 8'd40) && title_ph, MSG_PUSH_5_AGAIN, 2'd0, 4'd0};
+            // 설정:  윗줄 "SETUP   12-4-678" ("SETUP" <-> "5:START" 번갈아), 아랫줄 "3 CPU HARD    ON"
+            2'd3: if (!r) spA = {1'b1, gt[5] ? MSG_5_START : MSG_SETUP, 2'd0, 4'd0};
+                  else begin
+                      spA = {1'b1, MSG_1_SPECIAL_SH + {3'd0, set_sel}, 2'd0, 4'd0};
+                      spB = {1'b1, dip[set_sel] ? MSG_ON : MSG_OFF, 2'd1, 4'd0};
+                  end
             default: if (!r) begin spA = hud_a; spB = hud_b; spC = hud_c; end
         endcase
     end
@@ -180,6 +189,11 @@ module lcd_renderer (
         end
     end
 
+    // ================================================================ 설정 화면 DIP 줄 (윗줄 8~15칸)
+    //   켜진 스위치는 번호, 꺼진 스위치는 '-'. 지금 설명 중인 스위치는 깜빡임
+    wire [2:0] dip_i  = c[2:0];
+    wire [7:0] dip_ch = (dip_i == set_sel && gt[3]) ? CH_SPACE : dip[dip_i] ? 8'h31 + {5'd0, dip_i} : CH_MINUS;
+
     // ================================================================ DDRAM 문자 합성
     reg [7:0] v;
     reg       e;
@@ -207,6 +221,11 @@ module lcd_renderer (
                     if (c == 4'd14) v = 8'd4;                       // 트로피
                 end
                 if (r && e && fw_hit) v = fw_ch;
+            end
+            2'd3: begin // ---- 설정
+                if (hA) v = chA;
+                if (hB) v = chB;
+                if (!r && c[3]) v = dip_ch;
             end
             default: begin // ---- 게임 화면
                 v = fA; e = fA_e;
