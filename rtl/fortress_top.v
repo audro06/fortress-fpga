@@ -19,7 +19,8 @@ module fortress_top #(
     parameter integer STEPS_PER_REV   = 200,     // 보드 스텝모터 1바퀴 스텝 수
     parameter         STEP_HOME_LEVEL = 1'b1,    // 원점 센서 감지 값
     parameter integer SERVO_MIN_US    = 700,
-    parameter integer SERVO_MAX_US    = 2300
+    parameter integer SERVO_MAX_US    = 2300,
+    parameter         SERVO_MIRROR    = 1'b1     // 서보 좌우 뒤집기: P1·P2 포신 방향이 서로 바뀌어 보이면 반대로
 ) (
     input  wire        clk,
     input  wire [11:0] key,          // KEY01..KEY12 = 1 2 3 / 4 5 6 / 7 8 9 / * 0 #
@@ -197,8 +198,11 @@ module fortress_top #(
     );
 
     // ------------------------------------------------------------ 모터 / 소리
+    // game_core 는 P1 = 각도, P2 = 180 - 각도로 보내요. 서보를 단 방향에 따라 좌우를 한 번 더 뒤집음
+    wire [7:0] servo_target = SERVO_MIRROR ? 8'd180 - servo_deg : servo_deg;
+
     servo_ctrl #(.CLK_HZ(CLK_HZ), .MIN_US(SERVO_MIN_US), .MAX_US(SERVO_MAX_US)) u_servo (
-        .clk(clk), .rst(rst), .tick_frame(tick_frame), .target_deg(servo_deg), .cur_deg(), .servo(servo_m)
+        .clk(clk), .rst(rst), .tick_frame(tick_frame), .target_deg(servo_target), .cur_deg(), .servo(servo_m)
     );
 
     stepper_ctrl #(.STEPS_PER_REV(STEPS_PER_REV), .HOME_LEVEL(STEP_HOME_LEVEL)) u_step (

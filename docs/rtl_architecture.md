@@ -68,6 +68,7 @@ fortress_top
 | 버튼 방식 | Button Switch (핀 하나씩) | 보드 전환 스위치가 있으면 Button 쪽 |
 | LCD 글자 쓰기 대기 | 100 us | `lcd_ctrl #(EXEC_US)` (글자가 빠지면 늘리기) |
 | 서보 펄스 폭 | 0.7 ms ~ 2.3 ms | `SERVO_MIN_US`, `SERVO_MAX_US` |
+| 서보 좌우 | 뒤집음 (P1 = 180-각도, P2 = 각도) | `SERVO_MIRROR` |
 | 스텝모터 1바퀴 스텝 | 200 | `STEPS_PER_REV` |
 | 원점 센서 감지 값 | 1 | `STEP_HOME_LEVEL` |
 

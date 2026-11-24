@@ -172,7 +172,8 @@ module fortress_top #(
     parameter integer STEPS_PER_REV   = 200,         // 스텝모터 한 바퀴 스텝 수
     parameter         STEP_HOME_LEVEL = 1'b1,        // 원점 센서가 감지됐을 때 값
     parameter integer SERVO_MIN_US    = 700,         // 서보 0° 펄스 폭 (us)
-    parameter integer SERVO_MAX_US    = 2300         // 서보 180° 펄스 폭 (us)
+    parameter integer SERVO_MAX_US    = 2300,        // 서보 180° 펄스 폭 (us)
+    parameter         SERVO_MIRROR    = 1'b1         // 서보 좌우 뒤집기 (P1·P2 포신 방향이 서로 바뀌어 보이면 반대로)
 )
 ```
 
@@ -208,6 +209,7 @@ module fortress_top #(
 | 일부 버튼만 안 먹힘 | 핀맵에 KEY06~12가 키패드 행/열 겸용으로 적혀 있어요. 보드에 Button / Keypad 전환 스위치가 있으면 **Button** 쪽으로 |
 | DIP 설정이 반대로 먹힘 | `DIP_ACTIVE_LOW` 를 반대로 |
 | 7세그 자리 순서가 거꾸로 (체력이 반대편에) | `seg8_ctrl` 의 `REVERSE` 를 1로 |
+| 서보가 P1 차례에 P2 쪽을, P2 차례에 P1 쪽을 가리킴 (방향이 서로 바뀜) | `SERVO_MIRROR` 를 반대로 |
 | 서보 각도가 화면 각도와 다름 | `SERVO_MIN_US` / `SERVO_MAX_US` 를 조금씩 바꿔 맞추기 (7주차 실습처럼) |
 | 스텝모터가 안 돌고 떨기만 함 | `rtl/output/stepper_ctrl.v` 의 `FAST_MS` 를 키워서 천천히 돌리기 |
 | 룰렛이 엉뚱한 칸에서 멈춤 | `STEPS_PER_REV` 를 실제 모터 값으로, 원판을 붙인 방향 확인 |
